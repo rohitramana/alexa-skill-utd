@@ -39,7 +39,6 @@ class LaunchRequestHandler(AbstractRequestHandler):
 		_ = handler_input.attributes_manager.request_attributes["_"]
 
 		locale = handler_input.request_envelope.request.locale
-		item = util.get_random_item(locale)
 		speech = _(data.WELCOME_MESSAGE).format(
 			_(data.SKILL_NAME))
 		reprompt = _(data.WELCOME_REPROMPT)
@@ -48,48 +47,6 @@ class LaunchRequestHandler(AbstractRequestHandler):
 		return handler_input.response_builder.response
 
 
-class RecipeIntentHandler(AbstractRequestHandler):
-    """Handler for Recipe Intent."""
-    def can_handle(self, handler_input):
-        # type: (HandlerInput) -> bool
-        return is_intent_name("RecipeIntent")(handler_input)
-
-    def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
-        logger.info("In RecipeIntentHandler")
-        locale = handler_input.request_envelope.request.locale
-        _ = handler_input.attributes_manager.request_attributes["_"]
-
-        try:
-            item_name = handler_input.request_envelope.request.intent.slots[
-                "Item"].value.lower()
-        except AttributeError:
-            logger.info("Could not resolve item name")
-            item_name = None
-
-        card_title = _(data.DISPLAY_CARD_TITLE).format(
-            _(data.SKILL_NAME), item_name)
-        my_recipes = util.load_locale_specific_recipe(locale)
-
-        if item_name in my_recipes:
-            recipe = my_recipes[item_name]
-            # session_attributes['speech'] = recipe
-            handler_input.response_builder.speak(recipe).set_card(
-                SimpleCard(card_title, recipe))
-        else:
-            speech = _(data.RECIPE_NOT_FOUND_MESSAGE)
-            reprompt = _(data.RECIPE_NOT_FOUND_REPROMPT)
-            if item_name:
-                speech += _(data.RECIPE_NOT_FOUND_WITH_ITEM_NAME).format(
-                    item_name)
-            else:
-                speech += _(data.RECIPE_NOT_FOUND_WITHOUT_ITEM_NAME)
-            speech += reprompt
-
-            handler_input.response_builder.speak(speech).ask(
-                reprompt)
-
-        return handler_input.response_builder.response
 
 
 class HelpIntentHandler(AbstractRequestHandler):
@@ -106,7 +63,7 @@ class HelpIntentHandler(AbstractRequestHandler):
         locale = handler_input.request_envelope.request.locale
         item = util.get_random_item(locale)
 
-        speech = _(data.HELP_MESSAGE).format(item)
+        speech = _(data.HELP_MESSAGE)
 
         handler_input.response_builder.speak(speech).ask(speech)
         return handler_input.response_builder.response
@@ -253,7 +210,7 @@ class CourseBasicsIntentHandler(AbstractRequestHandler):
 					speech = speech + " Top result is "
 				
 				topResult = result.to_dict("records")[0]			
-				speech = speech +  topResult["ClassTitle"] + " offered by " + topResult["Instructor"] + ". It is a " + topResult["InstructionMode"] + " " + topResult["ActivityType"] + " class on "+ topResult["Days"] + " from " + topResult["StartTime"].strftime("%I %M %p") + " to " + topResult["EndTime"].strftime("%I %M %p") + " starting from " + topResult["StartDate"].strftime("%b %d, %Y") + " to "+ topResult["EndDate"].strftime("%b %d, %Y")
+				speech = speech +  topResult["ClassTitle"] + " offered by " + topResult["Instructor"] + ". It is a " + topResult["InstructionMode"] + " " + topResult["ActivityType"] + " class on "+ topResult["Days"] + " from " + topResult["StartTime"].strftime("%I %M %p") + " to " + topResult["EndTime"].strftime("%I %M %p") + " starting from " + topResult["StartDate"].strftime("%b %d, %Y") + " and ending on "+ topResult["EndDate"].strftime("%b %d, %Y")
 				speech = speech.replace("&","and")
 		handler_input.response_builder.speak(speech)
 		return handler_input.response_builder.response
@@ -289,7 +246,6 @@ class ProfessorIntentHandler(AbstractRequestHandler):
 		return handler_input.response_builder.response
 
 sb.add_request_handler(LaunchRequestHandler())
-sb.add_request_handler(RecipeIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(RepeatIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
