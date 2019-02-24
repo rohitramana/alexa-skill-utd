@@ -16,34 +16,36 @@ from ask_sdk_model.ui import SimpleCard
 from ask_sdk_model import Response
 
 from alexa import data, util
-
+import pandas as pd
 
 sb = SkillBuilder()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+coursebookData = pd.read_csv("coursebook.csv",parse_dates = ["StartTime", "EndTime", "StartDate", "EndDate"])
+def isStringAvailable(string):
+	return string!=None and len(string)!=0
 
 class LaunchRequestHandler(AbstractRequestHandler):
-    """Handler for skill launch."""
-    def can_handle(self, handler_input):
-        # type: (HandlerInput) -> bool
-        return is_request_type("LaunchRequest")(handler_input)
+	"""Handler for skill launch."""
+	def can_handle(self, handler_input):
+		# type: (HandlerInput) -> bool
+		return is_request_type("LaunchRequest")(handler_input)
 
-    def handle(self, handler_input):
-        # type: (HandlerInput) -> Response
-        logger.info("In LaunchRequestHandler")
-        _ = handler_input.attributes_manager.request_attributes["_"]
+	def handle(self, handler_input):
+		# type: (HandlerInput) -> Response
+		logger.info("In LaunchRequestHandler")
+		_ = handler_input.attributes_manager.request_attributes["_"]
 
-        locale = handler_input.request_envelope.request.locale
-        item = util.get_random_item(locale)
+		locale = handler_input.request_envelope.request.locale
+		item = util.get_random_item(locale)
+		speech = _(data.WELCOME_MESSAGE).format(
+			_(data.SKILL_NAME))
+		reprompt = _(data.WELCOME_REPROMPT)
 
-        speech = _(data.WELCOME_MESSAGE).format(
-            _(data.SKILL_NAME), item)
-        reprompt = _(data.WELCOME_REPROMPT)
-
-        handler_input.response_builder.speak(speech).ask(reprompt)
-        return handler_input.response_builder.response
+		handler_input.response_builder.speak(speech).ask(reprompt)
+		return handler_input.response_builder.response
 
 
 class RecipeIntentHandler(AbstractRequestHandler):
@@ -227,6 +229,65 @@ class LocalizationInterceptor(AbstractRequestInterceptor):
             "_"] = i18n.gettext
 
 
+        
+class CourseBasicsIntentHandler(AbstractRequestHandler):
+	"""Handler for Cancel and Stop Intents."""
+	def can_handle(self, handler_input):
+		return (is_intent_name("CourseBasicsIntent")(handler_input))
+
+	def handle(self, handler_input):
+		# type: (HandlerInput) -> Response
+		logger.info("In CourseBasicsIntentHandler")
+
+
+		_ = handler_input.attributes_manager.request_attributes["_"]
+		courseName = handler_input.request_envelope.request.intent.slots["CourseName"].value
+		result = None
+		speech = "There are no courses available"
+		if(isStringAvailable(courseName)):
+			result = coursebookData[coursebookData["ClassTitle"].str.lower().str.contains(courseName.lower())]			
+			if(len(result)>0):
+				speech = ""
+				if(len(result)>1):
+					speech = "There are " + str(len(result)) + " courses available."
+					speech = speech + " Top result is "
+				
+				topResult = result.to_dict("records")[0]			
+				speech = speech +  topResult["ClassTitle"] + " offered by " + topResult["Instructor"] + ". It is a " + topResult["InstructionMode"] + " " + topResult["ActivityType"] + " class on "+ topResult["Days"] + " from " + topResult["StartTime"].strftime("%I %M %p") + " to " + topResult["EndTime"].strftime("%I %M %p") + " starting from " + topResult["StartDate"].strftime("%b %d, %Y") + " to "+ topResult["EndDate"].strftime("%b %d, %Y")
+				speech = speech.replace("&","and")
+		handler_input.response_builder.speak(speech)
+		return handler_input.response_builder.response
+		
+class ProfessorIntentHandler(AbstractRequestHandler):
+	"""Handler for Cancel and Stop Intents."""
+	def can_handle(self, handler_input):
+		return (is_intent_name("ProfessorIntent")(handler_input))
+
+	def handle(self, handler_input):
+		# type: (HandlerInput) -> Response
+		logger.info("In ProfessorIntentHandler")
+
+
+		_ = handler_input.attributes_manager.request_attributes["_"]
+		courseName = handler_input.request_envelope.request.intent.slots["CourseName"].value
+		instructorName = handler_input.request_envelope.request.intent.slots["ProfessorName"].value
+		result = None
+		speech = "This course is not available"
+		if(isStringAvailable(courseName)):
+			result = coursebookData[coursebookData["ClassTitle"].str.lower().str.contains(courseName.lower())]			
+			if(len(result)>0):
+				result = set(result["Instructor"].tolist())
+				speech = "Professor "+",Professor ".join(result)
+		elif(isStringAvailable(instructorName)):
+			result = coursebookData[coursebookData["Instructor"].str.lower().str.contains(instructorName.lower())]			
+			if(len(result)>0):
+				result = set(result["ClassTitle"].tolist())
+				speech = ",".join(result)
+			
+				
+		handler_input.response_builder.speak(speech)
+		return handler_input.response_builder.response
+
 sb.add_request_handler(LaunchRequestHandler())
 sb.add_request_handler(RecipeIntentHandler())
 sb.add_request_handler(HelpIntentHandler())
@@ -234,7 +295,8 @@ sb.add_request_handler(RepeatIntentHandler())
 sb.add_request_handler(CancelOrStopIntentHandler())
 sb.add_request_handler(FallbackIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
-
+sb.add_request_handler(CourseBasicsIntentHandler())
+sb.add_request_handler(ProfessorIntentHandler())
 sb.add_exception_handler(CatchAllExceptionHandler())
 
 sb.add_global_request_interceptor(LocalizationInterceptor())

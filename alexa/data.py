@@ -3,8 +3,8 @@
 # Resolving gettext as _ for module loading.
 from gettext import gettext as _
 
-SKILL_NAME = _("Minecraft Helper")
-WELCOME_MESSAGE = _("Welcome to {}. You can ask a question like, what's the recipe for a {}? ... Now, what can I help you with?")
+SKILL_NAME = _("coursebook")
+WELCOME_MESSAGE = _("Welcome to {}. You can ask a question like, tell me about machine learning? ... Now, what can I help you with?")
 WELCOME_REPROMPT = _("For instructions on what you can say, please say help me.")
 DISPLAY_CARD_TITLE = _("{}  - Recipe for {}.")
 HELP_MESSAGE = _("You can ask questions such as, what's the recipe for a {}, or, you can say exit...Now, what can I help you with?")
