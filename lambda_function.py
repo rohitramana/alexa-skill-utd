@@ -61,7 +61,7 @@ class HelpIntentHandler(AbstractRequestHandler):
         _ = handler_input.attributes_manager.request_attributes["_"]
 
         locale = handler_input.request_envelope.request.locale
-        item = util.get_random_item(locale)
+        
 
         speech = _(data.HELP_MESSAGE)
 
@@ -119,10 +119,9 @@ class FallbackIntentHandler(AbstractRequestHandler):
         _ = handler_input.attributes_manager.request_attributes["_"]
 
         locale = handler_input.request_envelope.request.locale
-        item = util.get_random_item(locale)
 
-        help_message = _(data.HELP_MESSAGE).format(item)
-        help_reprompt = _(data.HELP_REPROMPT).format(item)
+        help_message = _(data.HELP_MESSAGE)
+        help_reprompt = _(data.HELP_REPROMPT)
         speech = _(data.FALLBACK_MESSAGE).format(
             _(data.SKILL_NAME)) + help_message
         reprompt = _(data.FALLBACK_MESSAGE).format(
@@ -245,6 +244,47 @@ class ProfessorIntentHandler(AbstractRequestHandler):
 		handler_input.response_builder.speak(speech)
 		return handler_input.response_builder.response
 
+class CourseEnrollmentIntentHandler(AbstractRequestHandler):
+	"""Handler for Cancel and Stop Intents."""
+	def can_handle(self, handler_input):
+		return (is_intent_name("CourseEnrollmentIntent")(handler_input))
+
+	def handle(self, handler_input):
+		# type: (HandlerInput) -> Response
+		logger.info(CourseEnrollmentIntentHandler)
+
+
+		_ = handler_input.attributes_manager.request_attributes["_"]
+		courseName = handler_input.request_envelope.request.intent.slots["CourseName"].value
+		result = None
+		speech = "course is not available"
+		if isStringAvailable(courseName):
+			courseId = courseName.split(".")[0]
+			courseSection = courseName.split(".")[1]
+			speech = "You cannot enroll as course is closed"
+			result = coursebookData[coursebookData["CourseID"].str.contains(courseId, case=False) & coursebookData["Section"].str.contains(courseSection, case=False) & coursebookData["Status"].str.contains("open", case=False)]
+
+			if len(result) > 0:
+				speech = "You cannot enroll as you require department or professor's consent"   
+				consent = result["Consent"].str.contains('y', case=False).iloc[0]
+				if(consent==False):
+					prereq = result["Prerequisites"]
+					speech = ""
+					if(prereq is None):
+						speech = "You have prereqs for this course. Please make sure you complete them before enrolling"
+					else:
+						speech = "You dont have any prereqs for this course. You are free to enroll."
+						availableSeats = result["Available Seats"].iloc[0]
+						if availableSeats < 5:
+							speech = speech + " Seats are fast filling. There are less than 5 seats available"
+						else:
+							speech = speech + " You have " + str(availableSeats) + " seats left"
+			
+				
+		handler_input.response_builder.speak(speech)
+		return handler_input.response_builder.response
+		
+
 sb.add_request_handler(LaunchRequestHandler())
 sb.add_request_handler(HelpIntentHandler())
 sb.add_request_handler(RepeatIntentHandler())
@@ -253,6 +293,7 @@ sb.add_request_handler(FallbackIntentHandler())
 sb.add_request_handler(SessionEndedRequestHandler())
 sb.add_request_handler(CourseBasicsIntentHandler())
 sb.add_request_handler(ProfessorIntentHandler())
+sb.add_request_handler(CourseEnrollmentIntentHandler())
 sb.add_exception_handler(CatchAllExceptionHandler())
 
 sb.add_global_request_interceptor(LocalizationInterceptor())
